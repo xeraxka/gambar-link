@@ -41,14 +41,10 @@ async def stream_handler(request: web.Request):
         path = request.match_info["path"]
         match = re.search(r"^([a-zA-Z0-9_-]{6})(\d+)$", path)
         if match:
-            secure_hash = match.group(1)
             message_id = int(match.group(2))
         else:
             message_id = int(re.search(r"(\d+)(?:\/\S+)?", path).group(1))
-            secure_hash = request.rel_url.query.get("hash")
-        return await media_streamer(request, message_id, secure_hash)
-    except InvalidHash as e:
-        raise web.HTTPForbidden(text=e.message)
+        return await media_streamer(request, message_id)
     except FIleNotFound as e:
         raise web.HTTPNotFound(text=e.message)
     except (AttributeError, BadStatusLine, ConnectionResetError):
@@ -59,7 +55,7 @@ async def stream_handler(request: web.Request):
 
 class_cache = {}
 
-async def media_streamer(request: web.Request, message_id: int, secure_hash: str):
+async def media_streamer(request: web.Request, message_id: int):
     range_header = request.headers.get("Range", 0)
     
     index = min(work_loads, key=work_loads.get)
@@ -78,10 +74,6 @@ async def media_streamer(request: web.Request, message_id: int, secure_hash: str
     logging.debug("before calling get_file_properties")
     file_id = await tg_connect.get_file_properties(message_id)
     logging.debug("after calling get_file_properties")
-    
-    if file_id.unique_id[:6] != secure_hash:
-        logging.debug(f"Invalid hash for message with ID {message_id}")
-        raise InvalidHash
     
     file_size = file_id.file_size
 
@@ -106,7 +98,7 @@ async def media_streamer(request: web.Request, message_id: int, secure_hash: str
     offset = from_bytes - (from_bytes % chunk_size)
     first_part_cut = from_bytes - offset
     last_part_cut = until_bytes % chunk_size + 1
-
+    
     req_length = until_bytes - from_bytes + 1
     part_count = math.ceil(until_bytes / chunk_size) - math.floor(offset / chunk_size)
     body = tg_connect.yield_file(
