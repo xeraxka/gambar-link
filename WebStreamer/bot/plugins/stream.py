@@ -1,6 +1,3 @@
-# This file is a part of TG-FileStreamBot
-# Coding : Jyothis Jayanth [@EverythingSuckz]
-
 import logging
 from pyrogram import filters
 from WebStreamer.vars import Var
@@ -10,15 +7,8 @@ from WebStreamer.utils import get_hash, get_name
 from pyrogram.enums.parse_mode import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
-
-
-
 @StreamBot.on_message(
-    filters.private
-    & (
-        filters.document
-        | filters.video
-    ),
+    filters.private & filters.photo,
     group=4,
 )
 async def media_receive_handler(_, m: Message):
